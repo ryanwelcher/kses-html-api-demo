@@ -23,4 +23,4 @@ The blueprint logs you in, activates the plugin, and opens the demo page.
 
 ## Browser version
 
-There's also a no-install version at **https://wp-kses-tester.space.fast/**. It runs WordPress nightly in your browser with [WordPress Playground](https://wordpress.org/playground/), so you can paste HTML and compare both parsers without setting anything up. Its source lives in [ryanwelcher/spacefast-demos](https://github.com/ryanwelcher/spacefast-demos/tree/trunk/wp-kses-tester).
+There's also a no-install version at **https://wp-kses-new-parser-tester.space.fast/**. It runs WordPress nightly in your browser with [WordPress Playground](https://wordpress.org/playground/), so you can paste HTML and compare both parsers without setting anything up. Its source lives in [ryanwelcher/spacefast-demos](https://github.com/ryanwelcher/spacefast-demos/tree/trunk/wp-kses-tester).

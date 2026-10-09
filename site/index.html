@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Does the New wp_kses Change Your HTML?</title>
+<meta name="description" content="Paste HTML and run it through wp_kses() with the legacy parser and the new parser built on the HTML API, using a real copy of WordPress nightly running in your browser.">
+<style>
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #f0f2f8;
+  --fg: #16181d;
+  --muted: #5b6170;
+  --border: #e1e4ee;
+  --accent: #3858e9;
+  --accent-soft: #e8edff;
+  --old: #b26200;
+  --old-soft: #fff1dc;
+  --new: #c4204b;
+  --new-soft: #ffe3ea;
+  --ok: #0a7d4f;
+  --ok-soft: #dcf5ea;
+  --code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius: 14px;
+  --on-accent: #ffffff;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d0f14;
+    --surface: #151821;
+    --surface-2: #1b1f2a;
+    --fg: #eef0f6;
+    --muted: #9aa1b2;
+    --border: #262b38;
+    --accent: #8ea2ff;
+    --accent-soft: #1f2645;
+    --old: #ffb44d;
+    --old-soft: #3a2a12;
+    --new: #ff7a9a;
+    --new-soft: #3d1724;
+    --ok: #4fd6a0;
+    --ok-soft: #12322a;
+    --on-accent: #0d0f14;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+a { color: var(--accent); }
+code { font-family: var(--code); font-size: .9em; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+
+/* Hero */
+.hero { padding: 56px 0 28px; }
+.eyebrow { display: inline-flex; gap: 8px; align-items: center; font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 999px; }
+h1 { font-size: clamp(2rem, 4.5vw, 3.2rem); line-height: 1.1; letter-spacing: -.02em; margin: 16px 0 12px; }
+h1 .k { font-family: var(--code); font-size: .85em; color: var(--accent); }
+.lede { font-size: 1.15rem; color: var(--muted); max-width: 68ch; margin: 0; }
+.status { margin-top: 20px; display: inline-flex; align-items: center; gap: 10px; font-size: .9rem; color: var(--muted); background: var(--surface); border: 1px solid var(--border); padding: 8px 14px; border-radius: 999px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--old); box-shadow: 0 0 0 0 var(--old); animation: pulse 1.4s infinite; }
+.status.ready .dot { background: var(--ok); animation: none; }
+.status.error .dot { background: var(--new); animation: none; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--old) 60%, transparent); } 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* Tool */
+.tool { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.toolbar .label { font-size: .85rem; color: var(--muted); margin-right: 4px; }
+.chip { font: inherit; font-size: .85rem; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); padding: 5px 12px; border-radius: 999px; cursor: pointer; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+textarea { width: 100%; min-height: 170px; resize: vertical; font: 14px/1.55 var(--code); color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+textarea:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 12px; }
+.ctx { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--muted); }
+select { font: inherit; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+.run { font: inherit; font-weight: 600; color: var(--on-accent); background: var(--accent); border: 0; border-radius: 10px; padding: 10px 20px; cursor: pointer; }
+.run:disabled { opacity: .5; cursor: progress; }
+.kbd { font-size: .8rem; color: var(--muted); }
+
+/* Results */
+.results { margin-top: 20px; display: none; }
+.results.show { display: block; }
+.verdict { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.badge { font-weight: 700; font-size: .85rem; padding: 4px 12px; border-radius: 999px; }
+.badge.same { color: var(--ok); background: var(--ok-soft); }
+.badge.diff { color: var(--new); background: var(--new-soft); }
+.badge.equiv { color: var(--accent); background: var(--accent-soft); }
+.tabs { margin-left: auto; display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.tabs button { font: inherit; font-size: .85rem; border: 0; background: transparent; color: var(--muted); padding: 5px 12px; border-radius: 7px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .cols { grid-template-columns: 1fr; } .tabs { margin-left: 0; } }
+.col h3 { margin: 0 0 6px; font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.col h3 .sw { width: 10px; height: 10px; border-radius: 3px; }
+.col.old .sw { background: var(--old); }
+.col.new .sw { background: var(--new); }
+pre.out { margin: 0; min-height: 64px; font: 14px/1.55 var(--code); white-space: pre-wrap; word-break: break-word; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.col.new pre.out { border-color: color-mix(in srgb, var(--new) 45%, var(--border)); }
+pre.out del { text-decoration: none; background: var(--old-soft); color: var(--old); border-radius: 3px; outline: 1px solid color-mix(in srgb, var(--old) 35%, transparent); }
+pre.out ins { text-decoration: none; background: var(--new-soft); color: var(--new); border-radius: 3px; outline: 1px solid color-mix(in srgb, var(--new) 35%, transparent); }
+.ws { color: var(--new); }
+iframe.render { width: 100%; min-height: 140px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.hints { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.hints li { background: var(--surface-2); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 8px; padding: 10px 14px; font-size: .95rem; }
+.hints li strong { display: block; }
+
+/* Explainer */
+section.explain { padding: 48px 0 8px; }
+h2 { font-size: 1.6rem; letter-spacing: -.01em; margin: 0 0 6px; }
+.sub { color: var(--muted); margin: 0 0 20px; max-width: 70ch; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+.card h3 { margin: 0; font-size: 1.05rem; }
+.card p { margin: 0; color: var(--muted); font-size: .95rem; }
+.pair { display: grid; gap: 6px; font: 13px/1.5 var(--code); }
+.pair div { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; }
+.pair .o { border-left: 3px solid var(--old); }
+.pair .n { border-left: 3px solid var(--new); }
+.pair b { display: block; font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.card .chip { align-self: flex-start; margin-top: auto; }
+
+/* Footer */
+footer { padding: 40px 0 64px; color: var(--muted); font-size: .95rem; }
+footer .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; border-top: 1px solid var(--border); padding-top: 24px; }
+footer h4 { margin: 0 0 6px; color: var(--fg); font-size: .95rem; }
+footer ul { margin: 0; padding-left: 18px; }
+#wp { position: absolute; width: 1px; height: 1px; border: 0; left: -9999px; top: 0; }
+</style>
+</head>
+<body>
+<header class="wrap hero">
+  <span class="eyebrow">WordPress trunk · expected in 7.2 or 7.3</span>
+  <h1>Does the new <span class="k">wp_kses()</span> change your HTML?</h1>
+  <p class="lede"><code>wp_kses()</code> is getting a new parser built on the HTML API. Most HTML comes out the same, but some of it doesn't. Paste yours below and this page runs it through both the legacy parser and the new one, using a real copy of WordPress nightly running in your browser.</p>
+  <div class="status" id="status" role="status"><span class="dot"></span><span id="status-text">Starting WordPress nightly in your browser…</span></div>
+</header>
+
+<main class="wrap">
+  <div class="tool">
+    <div class="toolbar">
+      <span class="label">Try an example:</span>
+      <button class="chip" data-example="amp">Ampersand</button>
+      <button class="chip" data-example="script">Script tag</button>
+      <button class="chip" data-example="trunc">Truncated tag</button>
+      <button class="chip" data-example="norm">Normalization</button>
+      <button class="chip" data-example="svg">Attribute order</button>
+      <button class="chip" data-example="math">MathML</button>
+    </div>
+    <label for="input" class="kbd" style="display:block;margin-bottom:6px">Your HTML</label>
+    <textarea id="input" spellcheck="false" placeholder="Paste some HTML from your plugin, a post, or a test fixture…"></textarea>
+    <div class="actions">
+      <div class="ctx">
+        <label for="context">Allowed HTML:</label>
+        <select id="context">
+          <option value="post" selected>post (wp_kses_post)</option>
+          <option value="post_svg">post + SVG icons (custom allow list)</option>
+          <option value="data">data (wp_kses_data)</option>
+          <option value="strip">strip (no tags)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="kbd">⌘/Ctrl + Enter</span>
+        <button class="run" id="run" disabled>Compare</button>
+      </div>
+    </div>
+
+    <div class="results" id="results" aria-live="polite">
+      <div class="verdict">
+        <span class="badge" id="badge"></span>
+        <span class="kbd" id="verdict-text"></span>
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true" data-view="source">Source</button>
+          <button role="tab" aria-selected="false" data-view="rendered">Rendered</button>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="col old">
+          <h3><span class="sw"></span>Legacy parser</h3>
+          <pre class="out" id="out-old"></pre>
+          <iframe class="render" id="render-old" sandbox="" title="Legacy parser output, rendered" hidden></iframe>
+        </div>
+        <div class="col new">
+          <h3><span class="sw"></span>New parser (HTML API)</h3>
+          <pre class="out" id="out-new"></pre>
+          <iframe class="render" id="render-new" sandbox="" title="New parser output, rendered" hidden></iframe>
+        </div>
+      </div>
+      <ul class="hints" id="hints"></ul>
+    </div>
+  </div>
+
+  <section class="explain">
+    <h2>What comes out different, and why</h2>
+    <p class="sub">The old <code>wp_kses()</code> was a chain of regular expressions guessing where the tags are. The new one parses HTML the way a browser does. These are the changes you're most likely to hit. Each output here is from WordPress 7.2-alpha-64255.</p>
+    <div class="cards" id="cards"></div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="grid">
+    <div>
+      <h4>Is wp_kses part of the HTML API?</h4>
+      <p>No. <code>wp_kses()</code> is a separate sanitizer. The new version is built on the HTML API's <code>WP_HTML_Tag_Processor</code>, which has been in core since 6.2.</p>
+    </div>
+    <div>
+      <h4>Need the old behavior back?</h4>
+      <p><code>add_filter( 'wp_kses_force_legacy_parser', '__return_true' );</code> switches back, but it's temporary. The legacy code could be gone in the same release this ships in, so use it to debug, not to ship.</p>
+    </div>
+    <div>
+      <h4>Links</h4>
+      <ul>
+        <li><a href="https://make.wordpress.org/core/2026/10/07/progress-report-wp_kses/">Progress Report: wp_kses()</a></li>
+        <li><a href="https://core.trac.wordpress.org/changeset/64233">Changeset 64233</a></li>
+        <li><a href="https://core.trac.wordpress.org/ticket/66208">Trac ticket #66208</a> (report anything that looks wrong)</li>
+        <li><a href="https://github.com/ryanwelcher/kses-html-api-demo">The plugin version of this tool</a></li>
+      </ul>
+    </div>
+  </div>
+  <p style="margin-top:24px">Made by <a href="https://ryanwelcher.com">Ryan Welcher</a>. WordPress runs in your browser with <a href="https://wordpress.org/playground/">WordPress Playground</a>, so nothing you paste leaves your machine.</p>
+</footer>
+
+<iframe id="wp" title="WordPress Playground" aria-hidden="true" tabindex="-1"></iframe>
+
+<script src="https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js"></script>
+<script type="module">
+import { startPlaygroundWeb } from 'https://playground.wordpress.net/client/index.js';
+
+const EXAMPLES = {
+  amp: {
+    title: 'Unescaped ampersands',
+    html: 'Add <code>/?preview=true&section=grilling</code>.',
+    old: 'Add <code>/?preview=true&amp;section=grilling</code>.',
+    neu: 'Add <code>/?preview=true§ion=grilling</code>.',
+    note: '<code>&amp;sect</code> is an old named character reference that browsers decode even without a semicolon. The new parser decodes it the same way. Escape your ampersands as <code>&amp;amp;</code>.',
+  },
+  script: {
+    title: 'SCRIPT and STYLE content',
+    html: 'Click on my <script>alert(1)<\/script>!',
+    old: 'Click on my alert(1)!',
+    neu: 'Click on my !',
+    note: 'The legacy parser removed the tags and left the contents as text. The new parser removes the element and everything inside it.',
+  },
+  trunc: {
+    title: 'Truncated tags at the end',
+    html: 'Click on the <butto',
+    old: 'Click on the &lt;butto',
+    neu: 'Click on the ',
+    note: "If the input ends partway through a tag, the new parser can't tell if it got cut off, so it drops it. Watch for this on excerpts cut at a character count.",
+  },
+  norm: {
+    title: 'Normalization',
+    html: "The <IMG class=bike class=\"bo&#x0061;t\" src='vehicle.png' /> & the wheels&hellip;",
+    old: 'The <IMG class="bike" src="vehicle.png" /> &amp; the wheels&hellip;',
+    neu: 'The <img class="bike" src="vehicle.png"> &amp; the wheels…',
+    note: 'Lowercase tags, double quotes, no self-closing slash, decoded character references. A browser sees the same HTML. assertSame() sees a different string, so switch those tests to assertEqualHTML().',
+  },
+  svg: {
+    title: 'Attribute order',
+    context: 'post_svg',
+    html: '<a href="/download"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2L2 22h20z"/></svg> Download</a> the file.',
+    old: '<a href="/download"><svg viewbox="0 0 24 24" width="16" height="16"><path d="M12 2L2 22h20z" /></svg> Download</a> the file.',
+    neu: '<a href="/download"><svg height="16" viewbox="0 0 24 24" width="16"><path d="M12 2L2 22h20z" /></svg> Download</a> the file.',
+    note: 'A simple inline SVG icon survives, but the attributes come back sorted alphabetically. This example adds <code>svg</code> and <code>path</code> to the post allow list, like a lot of plugins do.',
+  },
+  math: {
+    title: 'SVG and MathML that needs complex parsing',
+    html: '<ul>\n<li>XML-like <math><mtext>MathML</mtext></math>\n<li>HTML-like <math><mtext><span>MathML</span></mtext></math>\n<li>Plain text\n</ul>',
+    old: '<ul>\n<li>XML-like <math><mtext>MathML</mtext></math>\n<li>HTML-like <math><mtext><span>MathML</span></mtext></math>\n<li>Plain text\n</ul>',
+    neu: '<ul>\n<li>XML-like <math><mtext>MathML</mtext></math>\n<li>HTML-like ',
+    note: "When SVG or MathML needs the complicated parsing rules, the new parser stops and returns everything before that point. Here that's the third list item and the closing <code>&lt;/ul&gt;</code>.",
+  },
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function showWs(s) {
+  const t = s.replace(/ +$/, '');
+  const n = s.length - t.length;
+  return esc(t) + (n ? `<span class="ws" title="trailing space">${'·'.repeat(n)}</span>` : '');
+}
+
+// Explainer cards.
+$('cards').innerHTML = Object.entries(EXAMPLES).map(([key, ex]) => `
+  <article class="card">
+    <h3>${ex.title}</h3>
+    <div class="pair"><div class="o"><b>Legacy</b>${showWs(ex.old)}</div><div class="n"><b>New</b>${showWs(ex.neu)}</div></div>
+    <p>${ex.note}</p>
+    <button class="chip" data-example="${key}">Try it above</button>
+  </article>`).join('');
+
+document.addEventListener('click', (e) => {
+  const key = e.target.closest('[data-example]')?.dataset.example;
+  if (!key) return;
+  $('input').value = EXAMPLES[key].html;
+  $('context').value = EXAMPLES[key].context || 'post';
+  $('input').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (client) compare();
+});
+
+// Source / rendered tabs.
+document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+  const rendered = b.dataset.view === 'rendered';
+  ['old', 'new'].forEach((k) => { $(`out-${k}`).hidden = rendered; $(`render-${k}`).hidden = !rendered; });
+}));
+
+// Boot WordPress nightly in the browser.
+let client = null;
+const PHP = `<?php
+error_reporting( 0 );
+ini_set( 'display_errors', '0' );
+require '/wordpress/wp-load.php';
+$in  = json_decode( file_get_contents( '/tmp/kses-in.json' ), true );
+if ( 'post_svg' === $in['context'] ) {
+	$in['context'] = array_merge(
+		wp_kses_allowed_html( 'post' ),
+		array(
+			'svg'  => array( 'viewbox' => true, 'width' => true, 'height' => true, 'xmlns' => true, 'fill' => true, 'aria-hidden' => true ),
+			'path' => array( 'd' => true, 'fill' => true ),
+		)
+	);
+}
+$run = function ( $legacy ) use ( $in ) {
+	$cb = $legacy ? '__return_true' : '__return_false';
+	add_filter( 'wp_kses_force_legacy_parser', $cb, 99 );
+	$out = wp_kses( $in['html'], $in['context'] );
+	remove_filter( 'wp_kses_force_legacy_parser', $cb, 99 );
+	return $out;
+};
+echo wp_json_encode( array(
+	'version' => get_bloginfo( 'version' ),
+	'hasNew'  => function_exists( 'wp_sanitize_html_kses' ),
+	'legacy'  => $run( true ),
+	'new'     => $run( false ),
+) );`;
+
+async function runKses(html, context) {
+  await client.writeFile('/tmp/kses-in.json', JSON.stringify({ html, context }));
+  const res = await client.run({ code: PHP });
+  return JSON.parse(res.text);
+}
+
+function setStatus(text, state) {
+  $('status-text').textContent = text;
+  $('status').className = 'status' + (state ? ' ' + state : '');
+}
+
+async function boot() {
+  try {
+    client = await startPlaygroundWeb({
+      iframe: $('wp'),
+      remoteUrl: 'https://playground.wordpress.net/remote.html',
+      blueprint: { preferredVersions: { php: '8.3', wp: 'nightly' }, steps: [] },
+    });
+    await client.isReady();
+    const info = await runKses('', 'post');
+    if (!info.hasNew) {
+      setStatus(`WordPress ${info.version} is running, but it doesn't have the new parser yet.`, 'error');
+      return;
+    }
+    setStatus(`WordPress ${info.version} is running in your browser`, 'ready');
+    $('run').disabled = false;
+    if ($('input').value.trim()) compare();
+  } catch (err) {
+    console.error(err);
+    setStatus("WordPress couldn't start in this browser. The examples below still show real output.", 'error');
+  }
+}
+
+// Compare.
+function isEquivalent(a, b) {
+  const p = new DOMParser();
+  const da = p.parseFromString(`<body>${a}</body>`, 'text/html').body;
+  const db = p.parseFromString(`<body>${b}</body>`, 'text/html').body;
+  da.normalize(); db.normalize();
+  return da.isEqualNode(db);
+}
+
+function hintsFor(html, legacy, neu) {
+  const hints = [];
+  if (/&[a-zA-Z][a-zA-Z0-9]*(?![a-zA-Z0-9;])/.test(html)) hints.push(['Unescaped ampersand', EXAMPLES.amp.note]);
+  if (/<(script|style)\b/i.test(html)) hints.push(['SCRIPT or STYLE', EXAMPLES.script.note]);
+  if (/<[^>]*$/.test(html)) hints.push(['Truncated tag', EXAMPLES.trunc.note]);
+  if (/<(svg|math)\b/i.test(html) && neu.length < legacy.length) hints.push(['SVG or MathML', EXAMPLES.math.note]);
+  return hints;
+}
+
+async function compare() {
+  const html = $('input').value;
+  if (!client || !html.trim()) return;
+  $('run').disabled = true;
+  $('run').textContent = 'Running…';
+  try {
+    const r = await runKses(html, $('context').value);
+    const parts = Diff.diffChars(r.legacy, r.new);
+    $('out-old').innerHTML = parts.filter((p) => !p.added).map((p) => p.removed ? `<del>${esc(p.value)}</del>` : esc(p.value)).join('') || '<span class="kbd">(empty)</span>';
+    $('out-new').innerHTML = parts.filter((p) => !p.removed).map((p) => p.added ? `<ins>${esc(p.value)}</ins>` : esc(p.value)).join('') || '<span class="kbd">(empty)</span>';
+    $('render-old').srcdoc = r.legacy;
+    $('render-new').srcdoc = r.new;
+
+    const badge = $('badge');
+    const hints = hintsFor(html, r.legacy, r.new);
+    if (r.legacy === r.new) {
+      badge.className = 'badge same'; badge.textContent = 'Same output';
+      $('verdict-text').textContent = 'Both parsers return exactly the same string.';
+    } else if (isEquivalent(r.legacy, r.new)) {
+      badge.className = 'badge equiv'; badge.textContent = 'Same HTML, different string';
+      $('verdict-text').textContent = 'A browser parses these the same way. String comparisons in tests will still fail.';
+      hints.push(['Normalization', EXAMPLES.norm.note]);
+    } else {
+      badge.className = 'badge diff'; badge.textContent = 'Different output';
+      $('verdict-text').textContent = 'The highlighted parts only appear in one version.';
+    }
+    $('hints').innerHTML = hints.map(([t, n]) => `<li><strong>${t}</strong>${n}</li>`).join('');
+    $('results').classList.add('show');
+  } catch (err) {
+    console.error(err);
+    setStatus('Something went wrong running wp_kses(). Check the console for details.', 'error');
+  } finally {
+    $('run').disabled = false;
+    $('run').textContent = 'Compare';
+  }
+}
+
+$('run').addEventListener('click', compare);
+$('input').addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') compare(); });
+$('input').value = EXAMPLES.amp.html;
+boot();
+</script>
+</body>
+</html>

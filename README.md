@@ -20,3 +20,13 @@ npx @wp-playground/cli@latest server \
 ```
 
 The blueprint logs you in, activates the plugin, and opens the demo page.
+
+## Browser version
+
+There's also a no-install version at **https://wp-kses-new-parser.space.fast/**. It runs WordPress nightly in your browser with [WordPress Playground](https://wordpress.org/playground/), so you can paste HTML and compare both parsers without setting anything up. The source is in [`site/`](site/).
+
+To publish changes to the same Space:
+
+```bash
+npx -y spacefast publish site
+```

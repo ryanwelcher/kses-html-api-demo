@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "spaceId": "spc_a09092e1a2ce44c381fc4b5fa95dc500",
+  "apiUrl": "https://api.spacefast.com",
+  "teamSlug": "ryan-dev-rel",
+  "lastVersionId": "ver_ea5986b9d2704cf3a25c7d6b9d62c2b8",
+  "lastVersionUrl": "https://wp-kses-tester--v1.space.fast/",
+  "lastSpaceUrl": "https://wp-kses-tester.space.fast/",
+  "publishRoot": ".",
+  "anonymousPublishNonce": "84f300d6-4c86-4dd4-b38a-bebc119a5d8d",
+  "creationReplay": {
+    "key": "sf-space-create-2adcbae49026981ef2ebac4b907d85ab5e21685f4889a39c0123e4209f714f7e",
+    "principal": "6b56630247bcb100d14e92a49ee899d9c1e6cd044138724fcf1ed1b41e19d731",
+    "kind": "authenticated",
+    "createdAt": "2026-10-09T15:30:57.187Z"
+  }
+}

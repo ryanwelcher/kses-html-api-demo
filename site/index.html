@@ -172,7 +172,10 @@ footer ul { margin: 0; padding-left: 18px; }
     <div class="toolbar">
       <span class="label">Or try an example:</span>
       <button class="chip" data-example="amp">Ampersand</button>
+      <button class="chip" data-example="lt">Stray &lt; and &gt;</button>
       <button class="chip" data-example="script">Script tag</button>
+      <button class="chip" data-example="sneaky">Text inside title</button>
+      <button class="chip" data-example="untitle">Unclosed title</button>
       <button class="chip" data-example="trunc">Truncated tag</button>
       <button class="chip" data-example="norm">Normalization</button>
       <button class="chip" data-example="math">MathML</button>
@@ -257,12 +260,33 @@ const EXAMPLES = {
     neu: 'Add <code>/?preview=true§ion=grilling</code>.',
     note: '<code>&amp;sect</code> is an old named character reference that browsers decode even without a semicolon. The new parser decodes it the same way. Escape your ampersands as <code>&amp;amp;</code>.',
   },
+  lt: {
+    title: 'Stray < and > in text',
+    html: 'It would have to be <$500 for me to be interested in buying it; it’s already >5yo and past its warranted life.',
+    old: 'It would have to be 5yo and past its warranted life.',
+    neu: 'It would have to be &lt;$500 for me to be interested in buying it; it’s already &gt;5yo and past its warranted life.',
+    note: "The legacy parser treated everything from <code>&lt;$500</code> to <code>&gt;</code> as a tag and threw it away, along with half the sentence. The new parser knows that isn't a tag, so it escapes the characters and keeps your text. This one's a bug fix.",
+  },
   script: {
     title: 'SCRIPT and STYLE content',
     html: 'Click on my <script>alert(1)<\/script>!',
     old: 'Click on my alert(1)!',
     neu: 'Click on my !',
     note: 'The legacy parser removed the tags and left the contents as text. The new parser removes the element and everything inside it.',
+  },
+  sneaky: {
+    title: 'Tag-like text inside TITLE',
+    html: '<title>The <sneaky> tag is not allowed.</title>\n<div>The <sneaky> tag is removed.</div>',
+    old: '<title>The  tag is not allowed.</title>\n<div>The  tag is removed.</div>',
+    neu: '<title>The &lt;sneaky&gt; tag is not allowed.</title>\n<div>The  tag is removed.</div>',
+    note: "Inside <code>&lt;title&gt;</code>, a browser reads everything as text, so <code>&lt;sneaky&gt;</code> isn't a tag there. The new parser escapes it instead of deleting it. Inside the <code>&lt;div&gt;</code> it really is a tag, so both parsers remove it.",
+  },
+  untitle: {
+    title: 'Unclosed TITLE',
+    html: 'Use the <title> tag to open a title.',
+    old: 'Use the <title> tag to open a title.',
+    neu: 'Use the ',
+    note: "A <code>&lt;title&gt;</code> that never closes swallows everything after it in a browser. The new parser drops the incomplete element and everything after it, instead of passing it through.",
   },
   trunc: {
     title: 'Truncated tags at the end',
@@ -411,7 +435,9 @@ function hintsFor(html, legacy, neu) {
   const hints = [];
   if (/&[a-zA-Z][a-zA-Z0-9]*(?![a-zA-Z0-9;])/.test(html)) hints.push(['Unescaped ampersand', EXAMPLES.amp.note]);
   if (/<(script|style)\b/i.test(html)) hints.push(['SCRIPT or STYLE', EXAMPLES.script.note]);
-  if (/<[^>]*$/.test(html)) hints.push(['Truncated tag', EXAMPLES.trunc.note]);
+  if (/<[^a-zA-Z\/!?]/.test(html) || /(^|[^-\w"'\/])>/.test(html.replace(/<[a-zA-Z\/!?][^<>]*>/g, ''))) hints.push(['Stray < or >', EXAMPLES.lt.note]);
+  if (/<title\b/i.test(html)) hints.push(/<\/title>/i.test(html) ? ['Text inside TITLE', EXAMPLES.sneaky.note] : ['Unclosed TITLE', EXAMPLES.untitle.note]);
+  else if (/<[^>]*$/.test(html)) hints.push(['Truncated tag', EXAMPLES.trunc.note]);
   if (/<(svg|math)\b/i.test(html) && neu.length < legacy.length) hints.push(['SVG or MathML', EXAMPLES.math.note]);
   return hints;
 }

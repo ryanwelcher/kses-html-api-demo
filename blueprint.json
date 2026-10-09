@@ -1,0 +1,17 @@
+{
+	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
+	"meta": {
+		"title": "KSES HTML API Demo",
+		"author": "ryanwelcher",
+		"description": "Compares the legacy wp_kses() parser with the new HTML API parser on WordPress nightly."
+	},
+	"landingPage": "/wp-admin/tools.php?page=kses-demo",
+	"preferredVersions": {
+		"php": "8.3",
+		"wp": "nightly"
+	},
+	"steps": [
+		{ "step": "login" },
+		{ "step": "activatePlugin", "pluginPath": "kses-html-api-demo/kses-html-api-demo.php" }
+	]
+}
